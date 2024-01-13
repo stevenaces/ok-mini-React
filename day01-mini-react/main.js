@@ -58,12 +58,37 @@ function createElement(type, props, ...children) {
 }
 
 const textNode = createTextNode("app");
-const App = createElement("div", { id: "app" }, textNode);
+const textNode2 = createTextNode(" mini-react");
+const App = createElement("div", { id: "app" }, textNode, textNode2);
 
-const dom = document.createElement(App.type);
-dom.id = App.props.id;
-document.querySelector("#root").append(dom);
+// const dom = document.createElement(App.type);
+// dom.id = App.props.id;
+// document.querySelector("#root").append(dom);
 
-const textNodeEl = document.createTextNode("");
-textNodeEl.nodeValue = textNode.props.nodeValue;
-dom.append(textNodeEl);
+// const textNodeEl = document.createTextNode("");
+// textNodeEl.nodeValue = textNode.props.nodeValue;
+// dom.append(textNodeEl);
+
+// v4 dynamic create vdom and render
+function render(el, container) {
+	const dom =
+		el.type === "TEXT_ELEMENT"
+			? document.createTextNode("")
+			: document.createElement(el.type);
+
+	// 处理 props
+	Object.keys(el.props).forEach((key) => {
+		if (key !== "children") {
+			dom[key] = el.props[key];
+		}
+	});
+
+	// 处理 children
+	el.props.children.forEach((e) => {
+		render(e, dom);
+	});
+
+	container.append(dom);
+}
+
+render(App, document.querySelector("#root"));
