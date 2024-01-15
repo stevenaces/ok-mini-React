@@ -27,7 +27,22 @@ function render(el, container) {
 			children: [el],
 		},
 	};
+  root = nextWorkUnit
 }
+
+
+let root = null
+function commitRoot() {
+  commitWork(root.child)
+}
+
+function commitWork(fiber) {
+  if(!fiber) return
+  fiber.parent.dom.append(fiber.dom)
+  commitWork(fiber.child)
+  commitWork(fiber.sibling)
+}
+
 
 let nextWorkUnit = null;
 function workLoop(deadline) {
@@ -37,6 +52,12 @@ function workLoop(deadline) {
 		nextWorkUnit = performWorkUnit(nextWorkUnit);
 		shouldYield = deadline.timeRemaining() < 1;
 	}
+
+  if(!nextWorkUnit && root){  // 通过判断root，只允许提交一次
+    // 统一提交
+    commitRoot()
+    root = null
+  }
 
 	requestIdleCallback(workLoop);
 }
@@ -86,7 +107,8 @@ function performWorkUnit(fiber) {
 		// 1. 创建dom
 		const dom = (fiber.dom = createDom(fiber.type));
 
-		fiber.parent.dom.append(dom);
+    // 【统一提交，防止渲染时被阻塞，影响用户体验】
+		// fiber.parent.dom.append(dom);
 
 		// 2. 处理props
 		updateProps(dom, fiber.props);

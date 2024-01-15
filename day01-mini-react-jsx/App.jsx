@@ -1,7 +1,7 @@
 import React from "./core/React.js";
 
 // const App = React.createElement("div", { id: "app" }, "Hi ", "mini-react", "!");
-const App = <div>Hi mini-react!</div>;
+const App = <div>Hi mini-react!<p>a line</p><p>another line</p></div>;
 
 // function AppOne() {
 //   return <div>Hi mini-react!</div>
