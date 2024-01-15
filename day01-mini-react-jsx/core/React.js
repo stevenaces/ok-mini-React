@@ -14,9 +14,10 @@ function createElement(type, props, ...children) {
 		props: {
 			...props,
 			children: children.map((child) => {
-        const isTextNode = typeof child === 'string' || typeof child === 'number'
-				return isTextNode ? createTextNode(child) : child
-      }),
+				const isTextNode =
+					typeof child === "string" || typeof child === "number";
+				return isTextNode ? createTextNode(child) : child;
+			}),
 		},
 	};
 }
@@ -28,30 +29,29 @@ function render(el, container) {
 			children: [el],
 		},
 	};
-  root = nextWorkUnit
+	root = nextWorkUnit;
 }
 
-
-let root = null
+let root = null;
 function commitRoot() {
-  commitWork(root.child)
+	console.log("commitRoot:", root);
+	commitWork(root.child);
 }
 
 function commitWork(fiber) {
-  if(!fiber) return
-  
-  let fiberParent = fiber.parent
-  while(!fiberParent.dom){
-    fiberParent = fiberParent.parent
-  }
+	if (!fiber) return;
 
-  if(fiber.dom){  
-    fiberParent.dom.append(fiber.dom)
-  }
-  commitWork(fiber.child)
-  commitWork(fiber.sibling)
+	let fiberParent = fiber.parent;
+	while (!fiberParent.dom) {
+		fiberParent = fiberParent.parent;
+	}
+
+	if (fiber.dom) {
+		fiberParent.dom.append(fiber.dom);
+	}
+	commitWork(fiber.child);
+	commitWork(fiber.sibling);
 }
-
 
 let nextWorkUnit = null;
 function workLoop(deadline) {
@@ -62,11 +62,12 @@ function workLoop(deadline) {
 		shouldYield = deadline.timeRemaining() < 1;
 	}
 
-  if(!nextWorkUnit && root){  // 通过判断root，只允许提交一次
-    // 统一提交
-    commitRoot()
-    root = null
-  }
+	if (!nextWorkUnit && root) {
+		// 通过判断root，只允许提交一次
+		// 统一提交
+		commitRoot();
+		root = null;
+	}
 
 	requestIdleCallback(workLoop);
 }
@@ -110,37 +111,49 @@ function initChildren(fiber, children) {
 	});
 }
 
-function performWorkUnit(fiber) {
-  const isFunctionComponent = typeof fiber.type === 'function'
+function updateFunctionComponent(fiber) {
+	// 构建 dom关系
+	const children = [fiber.type(fiber.props)];
+	initChildren(fiber, children);
+}
 
-  if(!isFunctionComponent){  
-    if (!fiber.dom) {
-      // 1. 创建dom
-      const dom = (fiber.dom = createDom(fiber.type));
+function updateHostComponent(fiber) {
+	if (!fiber.dom) {
+		// 1. 创建dom
+		const dom = (fiber.dom = createDom(fiber.type));
 
-      // 【统一提交，防止渲染时被阻塞，影响用户体验】
-      // fiber.parent.dom.append(dom);
+		// 【统一提交，防止渲染时被阻塞，影响用户体验】
+		// fiber.parent.dom.append(dom);
 
-      // 2. 处理props
-      updateProps(dom, fiber.props);
-    }
-  }
+		// 2. 处理props
+		updateProps(dom, fiber.props);
+	}
 
 	// 3. 构建dom关系
-	const children = isFunctionComponent ? [fiber.type(fiber.props)] : fiber.props.children;
+	const children = fiber.props.children;
 	initChildren(fiber, children);
+}
+
+function performWorkUnit(fiber) {
+	const isFunctionComponent = typeof fiber.type === "function";
+
+	if (!isFunctionComponent) {
+		updateHostComponent(fiber);
+	} else {
+		updateFunctionComponent(fiber);
+	}
 
 	// 4. 返回下一个任务
 	if (fiber.child) {
 		return fiber.child;
 	}
 
-  // 多叉树最后一个儿子 找 祖叔
-  let nextFiber = fiber
-  while(nextFiber){
-    if(nextFiber.sibling) return nextFiber.sibling
-    nextFiber = nextFiber.parent
-  }
+	// 多叉树最后一个儿子 找 (祖)叔
+	let nextFiber = fiber;
+	while (nextFiber) {
+		if (nextFiber.sibling) return nextFiber.sibling;
+		nextFiber = nextFiber.parent;
+	}
 }
 
 const React = {
