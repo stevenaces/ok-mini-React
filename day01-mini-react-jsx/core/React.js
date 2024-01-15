@@ -13,9 +13,10 @@ function createElement(type, props, ...children) {
 		type,
 		props: {
 			...props,
-			children: children.map((child) =>
-				typeof child === "string" ? createTextNode(child) : child
-			),
+			children: children.map((child) => {
+        const isTextNode = typeof child === 'string' || typeof child === 'number'
+				return isTextNode ? createTextNode(child) : child
+      }),
 		},
 	};
 }
@@ -38,7 +39,15 @@ function commitRoot() {
 
 function commitWork(fiber) {
   if(!fiber) return
-  fiber.parent.dom.append(fiber.dom)
+  
+  let fiberParent = fiber.parent
+  while(!fiberParent.dom){
+    fiberParent = fiberParent.parent
+  }
+
+  if(fiber.dom){  
+    fiberParent.dom.append(fiber.dom)
+  }
   commitWork(fiber.child)
   commitWork(fiber.sibling)
 }
@@ -81,8 +90,7 @@ function updateProps(dom, props) {
 }
 
 // 构建fiber链
-function initChildren(fiber) {
-	const children = fiber.props.children;
+function initChildren(fiber, children) {
 	let prevChild = null;
 	children.forEach((child, index) => {
 		const newFiber = {
@@ -103,30 +111,36 @@ function initChildren(fiber) {
 }
 
 function performWorkUnit(fiber) {
-	if (!fiber.dom) {
-		// 1. 创建dom
-		const dom = (fiber.dom = createDom(fiber.type));
+  const isFunctionComponent = typeof fiber.type === 'function'
 
-    // 【统一提交，防止渲染时被阻塞，影响用户体验】
-		// fiber.parent.dom.append(dom);
+  if(!isFunctionComponent){  
+    if (!fiber.dom) {
+      // 1. 创建dom
+      const dom = (fiber.dom = createDom(fiber.type));
 
-		// 2. 处理props
-		updateProps(dom, fiber.props);
-	}
+      // 【统一提交，防止渲染时被阻塞，影响用户体验】
+      // fiber.parent.dom.append(dom);
 
-	// 3. 构建关系
-	initChildren(fiber);
+      // 2. 处理props
+      updateProps(dom, fiber.props);
+    }
+  }
+
+	// 3. 构建dom关系
+	const children = isFunctionComponent ? [fiber.type(fiber.props)] : fiber.props.children;
+	initChildren(fiber, children);
 
 	// 4. 返回下一个任务
 	if (fiber.child) {
 		return fiber.child;
 	}
 
-	if (fiber.sibling) {
-		return fiber.sibling;
-	}
-
-	return fiber.parent?.sibling;
+  // 多叉树最后一个儿子 找 祖叔
+  let nextFiber = fiber
+  while(nextFiber){
+    if(nextFiber.sibling) return nextFiber.sibling
+    nextFiber = nextFiber.parent
+  }
 }
 
 const React = {
