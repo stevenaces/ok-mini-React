@@ -6,18 +6,21 @@ import React from "./core/React.js";
 function CountContainer(){
   return <>
     <Count num={10}></Count>
-    <Count num={20}></Count>
+    {/* <Count num={20}></Count> */}
   </>
 }
 
 function Count({num}) {
-  return <div>count: {num}</div>
+  function handleClick() {
+    console.log('click');
+  }
+  return <div>count: {num}<button onClick={handleClick}>click</button></div>
 }
 
-// function App(){
-//   return <div>Hi mini-react! <CountContainer></CountContainer></div>
-// }
-const App = <div>Hi mini-react! <CountContainer></CountContainer></div>
+function App(){
+  return <div>Hi mini-react! <Count num={10}></Count></div>
+}
+// const App = <div>Hi mini-react! <Count num={10}></Count></div>
 
 // function AppOne() {
 //   return <div>Hi mini-react!</div>

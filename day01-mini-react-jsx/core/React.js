@@ -85,7 +85,12 @@ function createDom(type) {
 function updateProps(dom, props) {
 	Object.keys(props).forEach((key) => {
 		if (key !== "children") {
-			dom[key] = props[key];
+			if (key.startsWith("on")) {
+				const eventType = key.slice(2).toLowerCase();
+				dom.addEventListener(eventType, props[key]);
+			} else {
+				dom[key] = props[key];
+			}
 		}
 	});
 }
@@ -93,6 +98,7 @@ function updateProps(dom, props) {
 // 构建fiber链
 function initChildren(fiber, children) {
 	let prevChild = null;
+	// console.log("initChildren:", fiber);
 	children.forEach((child, index) => {
 		const newFiber = {
 			type: child.type,
