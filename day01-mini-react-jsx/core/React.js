@@ -153,7 +153,7 @@ function reconcileChildren(fiber, children) {
   let oldFiber = fiber.alternate?.child
 	children.forEach((child, index) => {
 
-    const isSameType = oldFiber && oldFiber.type === fiber.type
+    const isSameType = oldFiber && oldFiber.type === child.type
 
 		let newFiber
     if(isSameType){
