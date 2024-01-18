@@ -1,37 +1,54 @@
 import React from "./core/React.js";
 
-// const App = React.createElement("div", { id: "app" }, "Hi ", "mini-react", "!");
-
-
-function CountContainer(){
-  return <>
-    <Count num={10}></Count>
-    {/* <Count num={20}></Count> */}
-  </>
+let countFoo = 1;
+function Foo(){
+  console.log('Foo rerun');
+  const update = React.update()
+  function handleClick() {
+    countFoo++;
+    update()
+  }
+  return (
+    <div>
+      <h1>foo</h1>
+      {countFoo}
+      <button onClick={handleClick}>click</button>
+    </div>
+  )
 }
 
-let showBar = false
-function Count() {
+let countBar = 1;
+function Bar(){
+  console.log('Bar rerun');
+  const update = React.update()
+  function handleClick() {
+    countBar++;
+    update()
+  }
+  return (
+    <div>
+      <h1>bar</h1>
+      {countBar}
+      <button onClick={handleClick}>click</button>
+    </div>
+  )
+}
 
-  const bar = <div>bar</div>
+let countRoot = 1
+function App(){
+  console.log('app rerun');
 
-  function handleShowBar() {
-    showBar = !showBar
-    React.update();
+  const update = React.update()
+  function handleClick() {
+    countRoot++;
+    update()
   }
 
-  //通过 showBar 条件，控制渲染bar
   return  <div>
-            Count
-            {showBar && bar}
-            <button onClick={handleShowBar}>showBar</button>
-          </div>
-}
-
-function App(){
-  return  <div>
-            Hi mini-react! 
-            <Count></Count>
+            Hi mini-react! count: {countRoot}
+            <button onClick={handleClick}>click</button>
+            <Foo></Foo>
+            <Bar></Bar>
           </div>
 }
 // const App = <div>Hi mini-react! <Count num={10}></Count></div>
