@@ -153,7 +153,7 @@ function reconcileChildren(fiber, children) {
   let oldFiber = fiber.alternate?.child
 	children.forEach((child, index) => {
 
-    const isSameType = oldFiber && oldFiber.type === fiber.type
+    const isSameType = oldFiber && oldFiber.type === child.type
 
 		let newFiber
     if(isSameType){
@@ -168,14 +168,16 @@ function reconcileChildren(fiber, children) {
         effectTag: 'update'
       }
     }else{
-      newFiber = {
-        type: child.type,
-        props: child.props,
-        parent: fiber,
-        child: null,
-        sibling: null,
-        dom: null,
-        effectTag: 'placement'
+      if(child){
+          newFiber = {
+          type: child.type,
+          props: child.props,
+          parent: fiber,
+          child: null,
+          sibling: null,
+          dom: null,
+          effectTag: 'placement'
+        }        
       }
       if(oldFiber){
         console.log('delete oldFiber:', oldFiber);
@@ -192,7 +194,10 @@ function reconcileChildren(fiber, children) {
 		} else {
 			prevChild.sibling = newFiber;
 		}
-		prevChild = newFiber;
+
+    if(newFiber){
+		  prevChild = newFiber;
+    }
 	});
 
   console.log('odlFiber',oldFiber);

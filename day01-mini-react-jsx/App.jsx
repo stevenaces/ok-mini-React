@@ -13,23 +13,18 @@ function CountContainer(){
 let showBar = false
 function Count() {
 
-  function Foo() {
-    return  <div>
-              Foo
-              <div>child1</div>
-              <div>child2</div>
-            </div>
-  }
-  const bar = <p>Bar</p>
+  const bar = <div>bar</div>
 
-  function handleClick() {
+  function handleShowBar() {
     showBar = !showBar
     React.update();
   }
+
+  //通过 showBar 条件，控制渲染bar
   return  <div>
             Count
-            <div>{showBar ? bar : <Foo></Foo>}</div>
-            <button onClick={handleClick}>{showBar ? 'showFoo' : 'showBar'}</button>
+            {showBar && bar}
+            <button onClick={handleShowBar}>showBar</button>
           </div>
 }
 
