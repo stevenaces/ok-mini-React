@@ -9,20 +9,30 @@ function CountContainer(){
     {/* <Count num={20}></Count> */}
   </>
 }
-let count = 10;
-let props = {id: "1111"};
+
+let showBar = false
 function Count() {
+  // const foo = <div>Foo</div>
+  function Foo() {
+    return <div>Foo</div>
+  }
+  const bar = <p>Bar</p>
   function handleClick() {
-    console.log('click');
-    count++;
-    props = {};
+    showBar = !showBar
     React.update();
   }
-  return <div {...props}>count: {count}<button onClick={handleClick}>click</button></div>
+  return <div>
+            Count
+            <div>{showBar ? bar : <Foo></Foo>}</div>
+            <button onClick={handleClick}>{showBar ? 'showFoo' : 'showBar'}</button>
+          </div>
 }
 
 function App(){
-  return <div>Hi mini-react! <Count></Count></div>
+  return  <div>
+            Hi mini-react! 
+            <Count></Count>
+          </div>
 }
 // const App = <div>Hi mini-react! <Count num={10}></Count></div>
 
