@@ -12,16 +12,21 @@ function CountContainer(){
 
 let showBar = false
 function Count() {
-  // const foo = <div>Foo</div>
+
   function Foo() {
-    return <div>Foo</div>
+    return  <div>
+              Foo
+              <div>child1</div>
+              <div>child2</div>
+            </div>
   }
   const bar = <p>Bar</p>
+
   function handleClick() {
     showBar = !showBar
     React.update();
   }
-  return <div>
+  return  <div>
             Count
             <div>{showBar ? bar : <Foo></Foo>}</div>
             <button onClick={handleClick}>{showBar ? 'showFoo' : 'showBar'}</button>

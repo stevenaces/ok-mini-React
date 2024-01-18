@@ -194,6 +194,12 @@ function reconcileChildren(fiber, children) {
 		}
 		prevChild = newFiber;
 	});
+
+  console.log('odlFiber',oldFiber);
+  while(oldFiber){
+    deletions.push(oldFiber)
+    oldFiber = oldFiber.sibling
+  }
 }
 
 function updateFunctionComponent(fiber) {
