@@ -35,8 +35,8 @@ function render(el, container) {
 function commitRoot() {
 	console.log("commitRoot:", wipRoot);
 	commitWork(wipRoot.child);
-  currentRoot = wipRoot;
-  wipRoot = null
+	currentRoot = wipRoot;
+	wipRoot = null;
 }
 
 function commitWork(fiber) {
@@ -47,22 +47,22 @@ function commitWork(fiber) {
 		fiberParent = fiberParent.parent;
 	}
 
-	
-  if(fiber.effectTag === 'update'){
-    updateProps(fiber.dom, fiber.props, fiber.alternate?.props)
-  }else if(fiber.effectTag === 'placement'){
-    if (fiber.dom) {
-      fiberParent.dom.append(fiber.dom);
-    }
-  }
+	if (fiber.effectTag === "update") {
+		updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
+	} else if (fiber.effectTag === "placement") {
+		if (fiber.dom) {
+			fiberParent.dom.append(fiber.dom);
+		}
+	}
 
 	commitWork(fiber.child);
 	commitWork(fiber.sibling);
 }
 
 // work in progress
+let wipFiber = null;
 let wipRoot = null;
-let currentRoot = null
+let currentRoot = null;
 let nextWorkOfUnit = null;
 function workLoop(deadline) {
 	let shouldYield = false;
@@ -92,81 +92,77 @@ function createDom(type) {
 
 // 处理props
 function updateProps(dom, nextProps, prevProps) {
-
-
 	// Object.keys(nextProps).forEach((key) => {
 	// 	if (key !== "children") {
-  //     if(key.startsWith('on')){
-  //       const eventType = key.slice(2).toLowerCase()
-  //       dom.addEventListener(eventType, nextProps[key])
-  //     }else{
+	//     if(key.startsWith('on')){
+	//       const eventType = key.slice(2).toLowerCase()
+	//       dom.addEventListener(eventType, nextProps[key])
+	//     }else{
 	// 		  dom[key] = nextProps[key];
-  //     }
+	//     }
 	// 	}
 	// });
 
-  // 1. old 有 new 没有 -> 删除
-  Object.keys(prevProps).forEach((key) => {
+	// 1. old 有 new 没有 -> 删除
+	Object.keys(prevProps).forEach((key) => {
 		if (key !== "children") {
-      if(!(key in nextProps)){
-        dom.removeAttribute(key);
-      }
+			if (!(key in nextProps)) {
+				dom.removeAttribute(key);
+			}
 		}
 	});
 
-  // 2. new 有 old 没有 -> 添加
-  // 3. new 有 old 有 -> 修改
-  Object.keys(nextProps).forEach((key) => {
+	// 2. new 有 old 没有 -> 添加
+	// 3. new 有 old 有 -> 修改
+	Object.keys(nextProps).forEach((key) => {
 		if (key !== "children") {
-      if(nextProps[key] !== prevProps[key]){
-        if(key.startsWith('on')){
-          const eventType = key.slice(2).toLowerCase()
-          dom.removeEventListener(eventType, nextProps[key])
-          dom.addEventListener(eventType, nextProps[key])
-        }else{
-          dom[key] = nextProps[key];
-        }
-      }
+			if (nextProps[key] !== prevProps[key]) {
+				if (key.startsWith("on")) {
+					const eventType = key.slice(2).toLowerCase();
+					dom.removeEventListener(eventType, nextProps[key]);
+					dom.addEventListener(eventType, nextProps[key]);
+				} else {
+					dom[key] = nextProps[key];
+				}
+			}
 		}
 	});
-  
 }
 
 // 构建fiber链
 function reconcileChildren(fiber, children) {
 	let prevChild = null;
-  let oldFiber = fiber.alternate?.child
+	let oldFiber = fiber.alternate?.child;
 	children.forEach((child, index) => {
+		const isSameType = oldFiber && oldFiber.type === fiber.type;
 
-    const isSameType = oldFiber && oldFiber.type === fiber.type
+		let newFiber;
+		if (isSameType) {
+			newFiber = {
+				type: child.type,
+				props: child.props,
+				parent: fiber,
+				child: null,
+				sibling: null,
+				dom: oldFiber.dom,
+				alternate: oldFiber,
+				effectTag: "update",
+			};
+		} else {
+			newFiber = {
+				type: child.type,
+				props: child.props,
+				parent: fiber,
+				child: null,
+				sibling: null,
+				dom: null,
+				effectTag: "placement",
+			};
+		}
 
-		let newFiber
-    if(isSameType){
-      newFiber = {
-        type: child.type,
-        props: child.props,
-        parent: fiber,
-        child: null,
-        sibling: null,
-        dom: oldFiber.dom,
-        alternate: oldFiber,
-        effectTag: 'update'
-      }
-    }else{
-      newFiber = {
-        type: child.type,
-        props: child.props,
-        parent: fiber,
-        child: null,
-        sibling: null,
-        dom: null,
-        effectTag: 'placement'
-      }
-    }
-
-    if(oldFiber){
-      oldFiber = oldFiber.sibling
-    }
+		if (oldFiber) {
+			oldFiber = oldFiber.sibling;
+		}
 
 		if (index === 0) {
 			fiber.child = newFiber;
@@ -178,6 +174,9 @@ function reconcileChildren(fiber, children) {
 }
 
 function updateFunctionComponent(fiber) {
+	stateHooks = [];
+	stateHookIndex = 0;
+	wipFiber = fiber;
 	// 构建 dom关系
 	const children = [fiber.type(fiber.props)];
 	reconcileChildren(fiber, children);
@@ -226,15 +225,44 @@ function update() {
 	wipRoot = {
 		dom: currentRoot.dom,
 		props: currentRoot.props,
-    alternate: currentRoot
+		alternate: currentRoot,
 	};
-  console.log('update:', wipRoot);
+	console.log("update:", wipRoot);
 	nextWorkOfUnit = wipRoot;
 }
 
+let stateHooks;
+let stateHookIndex;
+function useState(initial) {
+	let currentFiber = wipFiber;
+
+	const oldHook = currentFiber.alternate?.stateHooks[stateHookIndex];
+
+	const stateHook = {
+		state: oldHook ? oldHook.state : initial,
+	};
+
+	stateHookIndex++;
+	stateHooks.push(stateHook);
+
+	currentFiber.stateHooks = stateHooks;
+
+	function setState(action) {
+		stateHook.state = action(stateHook.state);
+
+		wipRoot = {
+			...currentFiber,
+			alternate: currentFiber,
+		};
+		nextWorkOfUnit = wipRoot;
+	}
+	return [stateHook.state, setState];
+}
+
 const React = {
-  update,
+	update,
 	render,
+	useState,
 	createElement,
 };
 

@@ -1,40 +1,25 @@
 import React from "./core/React.js";
 
-// const App = React.createElement("div", { id: "app" }, "Hi ", "mini-react", "!");
-
-
-function CountContainer(){
-  return <>
-    <Count num={10}></Count>
-    {/* <Count num={20}></Count> */}
-  </>
-}
-let count = 10;
-let props = {id: "1111"};
-function Count() {
+function Foo() {
+  const [count, setCount] = React.useState(0)
+  const [bar, setBar] = React.useState('bar')
   function handleClick() {
-    console.log('click');
-    count++;
-    props = {};
-    React.update();
+    setCount((c) => c + 1)
+    setBar((c) => c+'bar')
   }
-  return <div {...props}>count: {count}<button onClick={handleClick}>click</button></div>
+  return <div>
+          <h1>Foo</h1> 
+            <div>{count}</div>
+            <div>{bar}</div>
+            <button onClick={handleClick}>click</button>
+          </div>
 }
 
 function App(){
-  return <div>Hi mini-react! <Count></Count></div>
+  return <div>Hi mini-react! <Foo></Foo></div>
 }
-// const App = <div>Hi mini-react! <Count num={10}></Count></div>
 
-// function AppOne() {
-//   return <div>Hi mini-react!</div>
-// }
 
 console.log('App.jsx ',App);
-
-// 暂时还不支持函数组件
-// function App(){
-//   return <div>Hi React function component</div>
-// }
 
 export default App;
