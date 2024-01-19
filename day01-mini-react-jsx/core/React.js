@@ -69,6 +69,11 @@ function workLoop(deadline) {
 
 	while (!shouldYield && nextWorkOfUnit) {
 		nextWorkOfUnit = performWorkUnit(nextWorkOfUnit);
+
+		if (wipRoot?.sibling?.type === nextWorkOfUnit?.type) {
+			nextWorkOfUnit = undefined;
+		}
+
 		shouldYield = deadline.timeRemaining() < 1;
 	}
 
@@ -240,7 +245,14 @@ function useState(initial) {
 
 	const stateHook = {
 		state: oldHook ? oldHook.state : initial,
+		queue: oldHook ? oldHook.queue : [],
 	};
+
+	stateHook.queue.forEach((action) => {
+		stateHook.state = action(stateHook.state);
+	});
+
+	stateHook.queue = [];
 
 	stateHookIndex++;
 	stateHooks.push(stateHook);
@@ -248,7 +260,8 @@ function useState(initial) {
 	currentFiber.stateHooks = stateHooks;
 
 	function setState(action) {
-		stateHook.state = action(stateHook.state);
+		// stateHook.state = action(stateHook.state);
+		stateHook.queue.push(action);
 
 		wipRoot = {
 			...currentFiber,
