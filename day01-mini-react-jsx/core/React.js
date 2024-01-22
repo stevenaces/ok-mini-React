@@ -1,4 +1,4 @@
-function createTextNode(text) {
+const createTextNode = (text) => {
 	return {
 		type: "TEXT_ELEMENT",
 		props: {
@@ -6,110 +6,326 @@ function createTextNode(text) {
 			children: [],
 		},
 	};
-}
+};
 
-function createElement(type, props, ...children) {
+const createElement = (type, props, ...children) => {
 	return {
 		type,
 		props: {
 			...props,
 			children: children.map((child) =>
-				typeof child === "string" ? createTextNode(child) : child
+				["string", "number"].includes(typeof child)
+					? createTextNode(child)
+					: child
 			),
 		},
 	};
-}
+};
 
-function render(el, container) {
-	nextWorkUnit = {
+const createDom = (type) => {
+	return type === "TEXT_ELEMENT"
+		? document.createTextNode("")
+		: document.createElement(type);
+};
+
+const updateProps = (dom, nextProps, oldProps = {}) => {
+	// 删除旧的props
+	dom &&
+		Object.keys(oldProps).forEach((key) => {
+			if (key !== "children" && !key.startsWith("on") && !nextProps[key]) {
+				dom.removeAttribute(key);
+			}
+		});
+	nextProps &&
+		Object.keys(nextProps).forEach((key) => {
+			if (key.startsWith("on")) {
+				const event = key.slice(2).toLowerCase();
+				dom.removeEventListener(event, oldProps[key]);
+				dom.addEventListener(event, nextProps[key]);
+			}
+			if (key !== "children" && !key.startsWith("on") && dom) {
+				dom[key] = nextProps[key];
+			}
+		});
+};
+
+const deletions = [];
+
+const reconcileChildren = (fiber, children) => {
+	let prev = null;
+	let oldFiber = fiber.alternate?.child;
+
+	children &&
+		children.forEach((child, index) => {
+			const isSameType = child?.type === oldFiber?.type;
+			let newFiber;
+			if (isSameType) {
+				newFiber = {
+					dom: oldFiber?.dom,
+					parent: fiber,
+					child: null,
+					sibling: null,
+					type: child.type,
+					props: child.props,
+					alternate: oldFiber,
+					effectTag: "UPDATE",
+				};
+			} else {
+				if (child) {
+					newFiber = {
+						dom: child.dom,
+						parent: fiber,
+						child: null,
+						sibling: null,
+						type: child.type,
+						props: child.props,
+						alternate: null,
+						effectTag: "PLACEMENT",
+					};
+				}
+				if (oldFiber) {
+					// removeOldFiber(oldFiber)
+					deletions.push(oldFiber);
+				}
+			}
+			if (index === 0) {
+				fiber.child = newFiber;
+			} else {
+				prev.sibling = newFiber;
+			}
+
+			if (newFiber) {
+				prev = newFiber;
+			}
+
+			oldFiber = oldFiber?.sibling || null;
+		});
+	// 检测有没有兄弟节点需要删除 新的已经遍历完了, 看看旧的有没有剩的
+	while (oldFiber) {
+		deletions.push(oldFiber);
+		oldFiber = oldFiber.sibling;
+	}
+};
+
+const commitDelete = (fiber) => {
+	if (!fiber) {
+		return;
+	}
+	if (fiber.dom) {
+		let parentFiber = fiber?.parent;
+		while (parentFiber && !parentFiber.dom) {
+			parentFiber = parentFiber.parent;
+		}
+		if (parentFiber.dom && fiber.type) {
+			parentFiber.dom.removeChild(fiber.dom);
+		}
+	}
+	commitDelete(fiber.child);
+};
+
+const commitRoot = () => {
+	deletions.forEach(commitDelete);
+	deletions.length = 0;
+	commitWork(wipRoot);
+	commitEffect(wipRoot);
+};
+
+const commitEffect = (fiber) => {
+	if (!fiber) {
+		return;
+	}
+
+	fiber?.alternate?.effectHooks?.forEach((hook, index) => {
+		hook.cleanup && hook.cleanup();
+	});
+
+	if (!fiber.alternate) {
+		fiber?.effectHooks?.forEach((hook) => {
+			const cleanup = hook.cb();
+			hook.cleanup = cleanup;
+		});
+	} else {
+		if (fiber?.effectHooks?.deps?.length === 0) {
+			return;
+		}
+		fiber?.effectHooks?.forEach((hook, index) => {
+			const isSame = hook?.deps.some((dep, i) => {
+				return dep !== fiber.alternate.effectHooks[i]?.deps[index];
+			});
+			isSame && (hook.cleanup = fiber?.effectHooks[index]?.cb());
+		});
+	}
+	commitEffect(fiber.child);
+	commitEffect(fiber.sibling);
+};
+
+const commitWork = (fiber) => {
+	if (!fiber) {
+		return;
+	}
+	let parentFiber = fiber?.parent;
+	while (parentFiber && !parentFiber.dom) {
+		parentFiber = parentFiber.parent;
+	}
+	if (parentFiber && fiber.dom && fiber.effectTag === "PLACEMENT") {
+		parentFiber.dom.appendChild(fiber.dom);
+	}
+	if (fiber.dom && fiber.effectTag === "UPDATE") {
+		updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
+	}
+	commitWork(fiber.child);
+	commitWork(fiber.sibling);
+};
+
+let wipFiber = null;
+
+const updateFunctionComponent = (fiber) => {
+	fiber.stateHook = [];
+	fiberEffectHooks = [];
+	fiberHooksIndex = 0;
+	wipFiber = fiber;
+	const children = [fiber.type(fiber.props)];
+
+	// 创建链表
+	reconcileChildren(fiber, children);
+};
+
+const updateHostComponent = (fiber) => {
+	if (!fiber.dom) {
+		fiber.dom = createDom(fiber.type);
+	}
+	// 更新props
+	updateProps(fiber.dom, fiber.props);
+	// 创建链表
+	reconcileChildren(fiber, fiber.props?.children);
+};
+
+const perWorkOfUnit = (fiber) => {
+	const { type } = fiber;
+	const isFunctionComponent = typeof type === "function";
+	if (isFunctionComponent) {
+		updateFunctionComponent(fiber);
+	} else {
+		updateHostComponent(fiber);
+	}
+
+	// 返回下一个节点
+	if (fiber.child) {
+		return fiber.child;
+	}
+	let nextFiber = fiber;
+	while (nextFiber) {
+		if (nextFiber.sibling) {
+			return nextFiber.sibling;
+		}
+		nextFiber = nextFiber.parent;
+	}
+};
+
+let nextUnitOfWork = null;
+let shouldYield = false;
+
+const workLoop = (IdleDeadline) => {
+	shouldYield = false;
+	while (!shouldYield && nextUnitOfWork) {
+		nextUnitOfWork = perWorkOfUnit(nextUnitOfWork);
+
+		if (wipRoot?.sibling?.type === nextUnitOfWork?.type) {
+			nextUnitOfWork = undefined;
+		}
+
+		shouldYield = IdleDeadline.timeRemaining() > 0;
+	}
+	if (!nextUnitOfWork && wipRoot) {
+		commitRoot();
+		currentRoot = wipRoot;
+		wipRoot = null;
+	}
+	requestIdleCallback(workLoop);
+};
+
+// 开始渲染子节点
+requestIdleCallback(workLoop);
+
+// 更新
+const update = () => {
+	let currentFiber = wipFiber;
+	return () => {
+		wipRoot = {
+			...currentFiber,
+			alternate: currentFiber,
+		};
+		nextUnitOfWork = wipRoot;
+	};
+};
+
+// work in progress wipRoot
+let wipRoot = null;
+let currentRoot = null;
+const render = (el, container) => {
+	wipRoot = {
 		dom: container,
 		props: {
 			children: [el],
 		},
 	};
-}
+	nextUnitOfWork = wipRoot;
+};
 
-let nextWorkUnit = null;
-function workLoop(deadline) {
-	let shouldYield = false;
+let fiberHooksIndex;
+const useState = (init) => {
+	let currentFiber = wipFiber;
+	const oldFiber = currentFiber.alternate;
+	const state = {
+		value: oldFiber?.stateHook[fiberHooksIndex]
+			? oldFiber?.stateHook[fiberHooksIndex]?.value
+			: init,
+		queue: oldFiber?.stateHook[fiberHooksIndex]?.queue || [],
+	};
 
-	while (!shouldYield && nextWorkUnit) {
-		nextWorkUnit = performWorkUnit(nextWorkUnit);
-		shouldYield = deadline.timeRemaining() < 1;
-	}
-
-	requestIdleCallback(workLoop);
-}
-
-requestIdleCallback(workLoop);
-
-// 创建dom
-function createDom(type) {
-	return type === "TEXT_ELEMENT"
-		? document.createTextNode("")
-		: document.createElement(type);
-}
-
-// 处理props
-function updateProps(dom, props) {
-	Object.keys(props).forEach((key) => {
-		if (key !== "children") {
-			dom[key] = props[key];
-		}
+	state.queue.forEach((fn) => {
+		state.value = fn(state.value);
 	});
-}
 
-// 构建fiber链
-function initChildren(fiber) {
-	const children = fiber.props.children;
-	let prevChild = null;
-	children.forEach((child, index) => {
-		const newFiber = {
-			type: child.type,
-			props: child.props,
-			parent: fiber,
-			child: null,
-			sibling: null,
-			dom: null,
+	state.queue.length = 0;
+
+	fiberHooksIndex++;
+	wipFiber.stateHook.push(state);
+	const setState = (fn) => {
+		const eagerState = typeof fn === "function" ? fn(state.value) : fn;
+		if (state.value === eagerState) {
+			return;
+		}
+
+		state.queue.push(typeof fn === "function" ? fn : () => fn);
+		wipRoot = {
+			...currentFiber,
+			alternate: currentFiber,
 		};
-		if (index === 0) {
-			fiber.child = newFiber;
-		} else {
-			prevChild.sibling = newFiber;
-		}
-		prevChild = newFiber;
-	});
-}
+		nextUnitOfWork = wipRoot;
+	};
+	return [state.value, setState];
+};
 
-function performWorkUnit(fiber) {
-	if (!fiber.dom) {
-		// 1. 创建dom
-		const dom = (fiber.dom = createDom(fiber.type));
+let fiberEffectHooks;
+function useEffect(cb, deps) {
+	let currentFiber = wipFiber;
+	const state = {
+		cb: cb,
+		deps: deps,
+	};
 
-		fiber.parent.dom.append(dom);
+	fiberEffectHooks.push(state);
 
-		// 2. 处理props
-		updateProps(dom, fiber.props);
-	}
-
-	// 3. 构建关系
-	initChildren(fiber);
-
-	// 4. 返回下一个任务
-	if (fiber.child) {
-		return fiber.child;
-	}
-
-	if (fiber.sibling) {
-		return fiber.sibling;
-	}
-
-	return fiber.parent?.sibling;
+	currentFiber.effectHooks = fiberEffectHooks;
 }
 
 const React = {
-	render,
 	createElement,
+	render,
+	update,
+	useState,
+	useEffect,
 };
 
 export default React;
