@@ -28,26 +28,44 @@ const createDom = (type) => {
 		: document.createElement(type);
 };
 
-const updateProps = (dom, nextProps, oldProps = {}) => {
-	// 删除旧的props
-	dom &&
-		Object.keys(oldProps).forEach((key) => {
-			if (key !== "children" && !key.startsWith("on") && !nextProps[key]) {
+// 处理props
+function updateProps(dom, nextProps, prevProps) {
+	// Object.keys(nextProps).forEach((key) => {
+	// 	if (key !== "children") {
+	//     if(key.startsWith('on')){
+	//       const eventType = key.slice(2).toLowerCase()
+	//       dom.addEventListener(eventType, nextProps[key])
+	//     }else{
+	// 		  dom[key] = nextProps[key];
+	//     }
+	// 	}
+	// });
+
+	// 1. old 有 new 没有 -> 删除
+	Object.keys(prevProps).forEach((key) => {
+		if (key !== "children") {
+			if (!(key in nextProps)) {
 				dom.removeAttribute(key);
 			}
-		});
-	nextProps &&
-		Object.keys(nextProps).forEach((key) => {
-			if (key.startsWith("on")) {
-				const event = key.slice(2).toLowerCase();
-				dom.removeEventListener(event, oldProps[key]);
-				dom.addEventListener(event, nextProps[key]);
+		}
+	});
+
+	// 2. new 有 old 没有 -> 添加
+	// 3. new 有 old 有 -> 修改
+	Object.keys(nextProps).forEach((key) => {
+		if (key !== "children") {
+			if (nextProps[key] !== prevProps[key]) {
+				if (key.startsWith("on")) {
+					const eventType = key.slice(2).toLowerCase();
+					dom.removeEventListener(eventType, nextProps[key]);
+					dom.addEventListener(eventType, nextProps[key]);
+				} else {
+					dom[key] = nextProps[key];
+				}
 			}
-			if (key !== "children" && !key.startsWith("on") && dom) {
-				dom[key] = nextProps[key];
-			}
-		});
-};
+		}
+	});
+}
 
 const deletions = [];
 
