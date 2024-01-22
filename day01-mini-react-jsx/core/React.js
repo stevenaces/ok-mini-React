@@ -29,7 +29,7 @@ const createDom = (type) => {
 };
 
 // 处理props
-function updateProps(dom, nextProps, prevProps) {
+const updateProps = (dom, nextProps, prevProps) => {
 	// Object.keys(nextProps).forEach((key) => {
 	// 	if (key !== "children") {
 	//     if(key.startsWith('on')){
@@ -65,7 +65,7 @@ function updateProps(dom, nextProps, prevProps) {
 			}
 		}
 	});
-}
+};
 
 const deletions = [];
 
@@ -86,7 +86,7 @@ const reconcileChildren = (fiber, children) => {
 					type: child.type,
 					props: child.props,
 					alternate: oldFiber,
-					effectTag: "UPDATE",
+					effectTag: "update",
 				};
 			} else {
 				if (child) {
@@ -98,7 +98,7 @@ const reconcileChildren = (fiber, children) => {
 						type: child.type,
 						props: child.props,
 						alternate: null,
-						effectTag: "PLACEMENT",
+						effectTag: "placement",
 					};
 				}
 				if (oldFiber) {
@@ -185,10 +185,10 @@ const commitWork = (fiber) => {
 	while (parentFiber && !parentFiber.dom) {
 		parentFiber = parentFiber.parent;
 	}
-	if (parentFiber && fiber.dom && fiber.effectTag === "PLACEMENT") {
+	if (parentFiber && fiber.dom && fiber.effectTag === "placement") {
 		parentFiber.dom.appendChild(fiber.dom);
 	}
-	if (fiber.dom && fiber.effectTag === "UPDATE") {
+	if (fiber.dom && fiber.effectTag === "update") {
 		updateProps(fiber.dom, fiber.props, fiber.alternate?.props);
 	}
 	commitWork(fiber.child);
